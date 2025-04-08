@@ -50,12 +50,12 @@ def construct_society(question: str) -> RolePlaying:
     models = {
         "user": ModelFactory.create(
             model_platform=ModelPlatformType.SILICONFLOW,
-            model_type="Qwen/QwQ-32B-Preview",
+            model_type="deepseek-ai/DeepSeek-V3",
             model_config_dict={"temperature": 0, "max_tokens": 4096},
         ),
         "assistant": ModelFactory.create(
             model_platform=ModelPlatformType.SILICONFLOW,
-            model_type="Qwen/QwQ-32B-Preview",
+            model_type="deepseek-ai/DeepSeek-V3",
             model_config_dict={"temperature": 0, "max_tokens": 4096},
         ),
         "browsing": ModelFactory.create(
@@ -65,7 +65,7 @@ def construct_society(question: str) -> RolePlaying:
         ),
         "planning": ModelFactory.create(
             model_platform=ModelPlatformType.SILICONFLOW,
-            model_type="Qwen/QwQ-32B-Preview",
+            model_type="deepseek-ai/DeepSeek-V3",
             model_config_dict={"temperature": 0, "max_tokens": 4096},
         ),
         "video": ModelFactory.create(
@@ -92,14 +92,14 @@ def construct_society(question: str) -> RolePlaying:
             web_agent_model=models["browsing"],
             planning_agent_model=models["planning"],
         ).get_tools(),
-        *CodeExecutionToolkit(sandbox="subprocess", verbose=True).get_tools(),
-        *ImageAnalysisToolkit(model=models["image"]).get_tools(),
-        SearchToolkit().search_duckduckgo,
-        SearchToolkit().search_google,  # Comment this out if you don't have google search
-        SearchToolkit().search_wiki,
-        *ExcelToolkit().get_tools(),
-        *DocumentProcessingToolkit(model=models["document"]).get_tools(),
-        *FileWriteToolkit(output_dir="./").get_tools(),
+        # *CodeExecutionToolkit(sandbox="subprocess", verbose=True).get_tools(),
+        # *ImageAnalysisToolkit(model=models["image"]).get_tools(),
+        # SearchToolkit().search_duckduckgo,
+        # SearchToolkit().search_google,  # Comment this out if you don't have google search
+        # SearchToolkit().search_wiki,
+        # *ExcelToolkit().get_tools(),
+        # *DocumentProcessingToolkit(model=models["document"]).get_tools(),
+        # *FileWriteToolkit(output_dir="./").get_tools(),
     ]
 
     # Configure agent roles and parameters
@@ -127,8 +127,8 @@ def construct_society(question: str) -> RolePlaying:
 def main():
     r"""Main function to run the OWL system with an example question."""
     # Default research question
-    default_task = "Navigate to Amazon.com and identify one product that is attractive to coders. Please provide me with the product name and price. No need to verify your answer."
-
+    # default_task = "假设现在是2025年，牛津大学的成立年份，并计算出其当前年龄。 然后再将这个年龄加上10年。一定要使用浏览器工具访问百度搜索。"
+    default_task = "浏览亚马逊并找出一款对程序员有吸引力的产品。请提供产品名称和价格"
     # Override default task if command line argument is provided
     task = sys.argv[1] if len(sys.argv) > 1 else default_task
 

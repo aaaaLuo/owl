@@ -11,9 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========= Copyright 2023-2024 @ CAMEL-AI.org. All Rights Reserved. =========
-import os
 import sys
-
+import pathlib
 from dotenv import load_dotenv
 from camel.models import ModelFactory
 from camel.toolkits import (
@@ -24,13 +23,11 @@ from camel.toolkits import (
     BrowserToolkit,
     FileWriteToolkit,
 )
-from camel.types import ModelPlatformType
-
-from owl.utils import run_society
-from camel.societies import RolePlaying
+from camel.types import ModelPlatformType, ModelType
 from camel.logger import set_log_level
+from camel.societies import RolePlaying
 
-import pathlib
+from owl.utils import run_society, DocumentProcessingToolkit
 
 base_dir = pathlib.Path(__file__).parent.parent
 env_path = base_dir / "owl" / ".env"
@@ -40,52 +37,28 @@ set_log_level(level="DEBUG")
 
 
 def construct_society(question: str) -> RolePlaying:
-    r"""Construct a society of agents based on the given question.
-
-    Args:
-        question (str): The task or question to be addressed by the society.
-
-    Returns:
-        RolePlaying: A configured society of agents ready to address the question.
-    """
-
     # Create models for different components
     models = {
         "user": ModelFactory.create(
-            model_platform=ModelPlatformType.OPENAI_COMPATIBLE_MODEL,
+            model_platform=ModelPlatformType.MODELSCOPE,
             model_type="deepseek-ai/DeepSeek-V3",
-            api_key=os.getenv("MODELSCOPE_SDK_TOKEN"),
-            url="https://api-inference.modelscope.cn/v1/",
-            model_config_dict={"temperature": 0.4, "max_tokens": 10000},
+            model_config_dict={"temperature": 0, "max_tokens": 8192},
         ),
         "assistant": ModelFactory.create(
-            model_platform=ModelPlatformType.OPENAI_COMPATIBLE_MODEL,
-            model_type="gpt-4o-mini",
-            api_key=os.getenv("OPENAI_API_KEY"),
-            url="https://free.v36.cm/v1",
-            model_config_dict={"temperature": 0, "max_tokens": 2048},
+            model_platform=ModelPlatformType.MODELSCOPE,
+            model_type="deepseek-ai/DeepSeek-V3-0324",
+            model_config_dict={"temperature": 0, "max_tokens": 8192},
         ),
         "browsing": ModelFactory.create(
-            model_platform=ModelPlatformType.OPENAI_COMPATIBLE_MODEL,
-            model_type="Qwen/Qwen2-VL-72B-Instruct",
-            api_key=os.getenv("SILICONFLOW_API_KEY"),
-            url="https://api.siliconflow.cn/v1",
-            model_config_dict={"temperature": 0, "max_tokens": 4096},
+            model_platform=ModelPlatformType.MODELSCOPE,
+            model_type="Qwen/Qwen2.5-VL-32B-Instruct",
+            model_config_dict={"temperature": 0, "max_tokens": 10000},
         ),
         "planning": ModelFactory.create(
-            model_platform=ModelPlatformType.OPENAI_COMPATIBLE_MODEL,
+            model_platform=ModelPlatformType.MODELSCOPE,
             model_type="deepseek-ai/DeepSeek-V3",
-            api_key=os.getenv("MODELSCOPE_SDK_TOKEN"),
-            url="https://api-inference.modelscope.cn/v1/",
-            model_config_dict={"temperature": 0.4, "max_tokens": 10000},
+            model_config_dict={"temperature": 0, "max_tokens": 8192},
         ),
-        # "image": ModelFactory.create(
-        #     model_platform=ModelPlatformType.OPENAI_COMPATIBLE_MODEL,
-        #     model_type="qwen-vl-max",
-        #     api_key=os.getenv("QWEN_API_KEY"),
-        #     url="https://dashscope.aliyuncs.com/compatible-mode/v1",
-        #     model_config_dict={"temperature": 0.4, "max_tokens": 128000},
-        # ),
     }
 
     # Configure toolkits
@@ -95,13 +68,6 @@ def construct_society(question: str) -> RolePlaying:
             web_agent_model=models["browsing"],
             planning_agent_model=models["planning"],
         ).get_tools(),
-        # *CodeExecutionToolkit(sandbox="subprocess", verbose=True).get_tools(),
-        # *ImageAnalysisToolkit(model=models["image"]).get_tools(),
-        # SearchToolkit().search_duckduckgo,
-        # SearchToolkit().search_google,  # Comment this out if you don't have google search
-        # SearchToolkit().search_wiki,
-        # *ExcelToolkit().get_tools(),
-        # *FileWriteToolkit(output_dir="./").get_tools(),
     ]
 
     # Configure agent roles and parameters
@@ -128,15 +94,13 @@ def construct_society(question: str) -> RolePlaying:
 
 def main():
     r"""Main function to run the OWL system with an example question."""
-    # Example research question
-    # default_task = "Navigate to Amazon.com and identify one product that is attractive to coders. Please provide me with the product name and price. No need to verify your answer."
+    # Default research question
     default_task = "浏览亚马逊并找出一款对程序员有吸引力的产品。请提供产品名称和价格"
     # Override default task if command line argument is provided
     task = sys.argv[1] if len(sys.argv) > 1 else default_task
 
     # Construct and run the society
     society = construct_society(task)
-
     answer, chat_history, token_count = run_society(society)
 
     # Output the result
