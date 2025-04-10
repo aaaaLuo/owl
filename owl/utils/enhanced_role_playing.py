@@ -214,60 +214,83 @@ Please note that our overall task may be very complicated. Here are some tips th
     def step(
         self, assistant_msg: BaseMessage
     ) -> Tuple[ChatAgentResponse, ChatAgentResponse]:
+        """
+        处理对话的一个步骤，接收助手消息并返回用户和助手的响应
+        参数: assistant_msg - 助手的消息
+        返回: 包含助手响应和用户响应的元组
+        """
+        
+        # 1. 处理工具调用
+        if hasattr(assistant_msg, 'tool_calls') and assistant_msg.tool_calls:
+            tool_messages = []
+            for tool_call in assistant_msg.tool_calls:
+                if tool_call.type == 'function':
+                    # 创建工具响应消息
+                    tool_response = {
+                        'role': 'tool',
+                        'content': f"Tool {tool_call.function.name} executed successfully",
+                        'tool_call_id': tool_call.id
+                    }
+                    tool_messages.append(tool_response)
+        
+            # 如果有工具调用，将工具响应添加到消息中
+            if tool_messages:
+                assistant_msg.tool_responses = tool_messages
+        
+        # 2. 用户代理处理助手消息
         user_response = self.user_agent.step(assistant_msg)
+        
+        # 3. 检查用户响应是否终止或为空
         if user_response.terminated or user_response.msgs is None:
             return (
                 ChatAgentResponse(msgs=[], terminated=False, info={}),
-                ChatAgentResponse(
-                    msgs=[],
-                    terminated=user_response.terminated,
-                    info=user_response.info,
-                ),
+                ChatAgentResponse(msgs=[], terminated=user_response.terminated, info=user_response.info),
             )
+        
+        # 4. 提取用户消息并创建副本
         user_msg = self._reduce_message_options(user_response.msgs)
-
         modified_user_msg = deepcopy(user_msg)
 
+        # 5. 根据任务完成状态修改用户消息
         if "TASK_DONE" not in user_msg.content:
+            # 如果任务未完成，添加辅助信息和工具使用说明
             modified_user_msg.content += f"""\n
-            Here are auxiliary information about the overall task, which may help you understand the intent of the current task:
+            以下是关于总体任务的辅助信息，这可能有助于您理解当前任务的意图：
             <auxiliary_information>
             {self.task_prompt}
             </auxiliary_information>
-            If there are available tools and you want to call them, never say 'I will ...', but first call the tool and reply based on tool call's result, and tell me which tool you have called.
+            如果有可用的工具并且您想要调用它们，请不要说"我将..."，而是先调用工具，根据工具调用的结果回复，并告诉我您使用了哪个工具。
             """
-
         else:
-            # The task is done, and the assistant agent need to give the final answer about the original task
+            # 如果任务完成，添加最终答案请求
             modified_user_msg.content += f"""\n
-            Now please make a final answer of the original task based on our conversation : <task>{self.task_prompt}</task>
+            现在请根据我们的对话，对原始任务给出最终答案：<task>{self.task_prompt}</task>
             """
 
-        # process assistant's response
+        # 6. 助手代理处理修改后的用户消息
         assistant_response = self.assistant_agent.step(modified_user_msg)
+        
+        # 7. 检查助手响应是否终止或为空
         if assistant_response.terminated or assistant_response.msgs is None:
             return (
-                ChatAgentResponse(
-                    msgs=[],
-                    terminated=assistant_response.terminated,
-                    info=assistant_response.info,
-                ),
-                ChatAgentResponse(
-                    msgs=[user_msg], terminated=False, info=user_response.info
-                ),
+                ChatAgentResponse(msgs=[], terminated=assistant_response.terminated, info=assistant_response.info),
+                ChatAgentResponse(msgs=[user_msg], terminated=False, info=user_response.info),
             )
+        
+        # 8. 提取助手消息并创建副本
         assistant_msg = self._reduce_message_options(assistant_response.msgs)
-
         modified_assistant_msg = deepcopy(assistant_msg)
+
+        # 9. 如果任务未完成，修改助手消息
         if "TASK_DONE" not in user_msg.content:
             modified_assistant_msg.content += f"""\n
-                Provide me with the next instruction and input (if needed) based on my response and our current task: <task>{self.task_prompt}</task>
-                Before producing the final answer, please check whether I have rechecked the final answer using different toolkit as much as possible. If not, please remind me to do that.
-                If I have written codes, remind me to run the codes.
-                If you think our task is done, reply with `TASK_DONE` to end our conversation.
+                根据我的回复和我们当前的任务：<task>{self.task_prompt}</task>，请提供下一步指示和输入（如果需要）。
+                在给出最终答案之前，请检查我是否已经使用了不同的工具包尽可能地重新验证了最终答案。如果没有，请提醒我这样做。
+                如果我写了代码，请提醒我运行代码。
+                如果您认为我们的任务已经完成，请回复"TASK_DONE"来结束我们的对话。
             """
 
-        # return the modified messages
+        # 10. 返回最终的响应元组
         return (
             ChatAgentResponse(
                 msgs=[modified_assistant_msg],
@@ -300,17 +323,17 @@ Please note that our overall task may be very complicated. Here are some tips th
 
         if "TASK_DONE" not in user_msg.content:
             modified_user_msg.content += f"""\n
-            Here are auxiliary information about the overall task, which may help you understand the intent of the current task:
+            以下是关于总体任务的辅助信息，这可能有助于您理解当前任务的意图：
             <auxiliary_information>
             {self.task_prompt}
             </auxiliary_information>
-            If there are available tools and you want to call them, never say 'I will ...', but first call the tool and reply based on tool call's result, and tell me which tool you have called.
+            如果有可用的工具并且您想要调用它们，请不要说"我将..."，而是先调用工具，根据工具调用的结果回复，并告诉我您使用了哪个工具。
             """
 
         else:
             # The task is done, and the assistant agent need to give the final answer about the original task
             modified_user_msg.content += f"""\n
-            Now please make a final answer of the original task based on our conversation : <task>{self.task_prompt}</task>
+            现在请根据我们的对话，对原始任务给出最终答案：<task>{self.task_prompt}</task>
             """
 
         assistant_response = await self.assistant_agent.astep(modified_user_msg)
@@ -330,10 +353,10 @@ Please note that our overall task may be very complicated. Here are some tips th
         modified_assistant_msg = deepcopy(assistant_msg)
         if "TASK_DONE" not in user_msg.content:
             modified_assistant_msg.content += f"""\n
-                Provide me with the next instruction and input (if needed) based on my response and our current task: <task>{self.task_prompt}</task>
-                Before producing the final answer, please check whether I have rechecked the final answer using different toolkit as much as possible. If not, please remind me to do that.
-                If I have written codes, remind me to run the codes.
-                If you think our task is done, reply with `TASK_DONE` to end our conversation.
+                根据我的回复和我们当前的任务：<task>{self.task_prompt}</task>，请提供下一步指示和输入（如果需要）。
+                在给出最终答案之前，请检查我是否已经使用了不同的工具包尽可能地重新验证了最终答案。如果没有，请提醒我这样做。
+                如果我写了代码，请提醒我运行代码。
+                如果您认为我们的任务已经完成，请回复"TASK_DONE"来结束我们的对话。
             """
 
         return (
@@ -373,17 +396,17 @@ class OwlGAIARolePlaying(OwlRolePlaying):
 
         if "TASK_DONE" not in user_msg.content:
             modified_user_msg.content += f"""\n
-            Here are auxiliary information about the overall task, which may help you understand the intent of the current task:
+            以下是关于总体任务的辅助信息，这可能有助于您理解当前任务的意图：
             <auxiliary_information>
             {self.task_prompt}
             </auxiliary_information>
-            If there are available tools and you want to call them, never say 'I will ...', but first call the tool and reply based on tool call's result, and tell me which tool you have called.
+            如果有可用的工具并且您想要调用它们，请不要说"我将..."，而是先调用工具，根据工具调用的结果回复，并告诉我您使用了哪个工具。
             """
 
         else:
             # The task is done, and the assistant agent need to give the final answer about the original task
             modified_user_msg.content += f"""\n
-            Now please make a final answer of the original task based on our conversation : <task>{self.task_prompt}</task>
+            现在请根据我们的对话，对原始任务给出最终答案：<task>{self.task_prompt}</task>
             Please pay special attention to the format in which the answer is presented.
             You should first analyze the answer format required by the question and then output the final answer that meets the format requirements. 
             Your response should include the following content:
@@ -416,10 +439,10 @@ class OwlGAIARolePlaying(OwlRolePlaying):
         modified_assistant_msg = deepcopy(assistant_msg)
         if "TASK_DONE" not in user_msg.content:
             modified_assistant_msg.content += f"""\n
-                Provide me with the next instruction and input (if needed) based on my response and our current task: <task>{self.task_prompt}</task>
-                Before producing the final answer, please check whether I have rechecked the final answer using different toolkit as much as possible. If not, please remind me to do that.
-                If I have written codes, remind me to run the codes.
-                If you think our task is done, reply with `TASK_DONE` to end our conversation.
+                根据我的回复和我们当前的任务：<task>{self.task_prompt}</task>，请提供下一步指示和输入（如果需要）。
+                在给出最终答案之前，请检查我是否已经使用了不同的工具包尽可能地重新验证了最终答案。如果没有，请提醒我这样做。
+                如果我写了代码，请提醒我运行代码。
+                如果您认为我们的任务已经完成，请回复"TASK_DONE"来结束我们的对话。
             """
 
         # return the modified messages
@@ -439,19 +462,25 @@ class OwlGAIARolePlaying(OwlRolePlaying):
 
 def run_society(
     society: OwlRolePlaying,
-    round_limit: int = 15,
+    round_limit: int = 5,
 ) -> Tuple[str, List[dict], dict]:
+    
+    # 初始化token计数器
+    # 创建空的对话历史列表
+    # 设置初始提示语
     overall_completion_token_count = 0
     overall_prompt_token_count = 0
 
     chat_history = []
     init_prompt = """
-    Now please give me instructions to solve over overall task step by step. If the task requires some specific knowledge, please instruct me to use tools to complete the task.
+    现在请给我一步步解决总体任务的指示。如果任务需要一些特定知识，请指导我使用工具来完成任务。
         """
     input_msg = society.init_chat(init_prompt)
+    # 遍历对话轮次
     for _round in range(round_limit):
+        # 处理对话的一个步骤，接收助手消息并返回用户和助手的响应
         assistant_response, user_response = society.step(input_msg)
-        # Check if usage info is available before accessing it
+        # 检查使用信息是否可用
         if assistant_response.info.get("usage") and user_response.info.get("usage"):
             overall_completion_token_count += assistant_response.info["usage"].get(
                 "completion_tokens", 0
@@ -460,12 +489,13 @@ def run_society(
                 "prompt_tokens", 0
             ) + user_response.info["usage"].get("prompt_tokens", 0)
 
-        # convert tool call to dict
+        # 将工具调用转换为字典
         tool_call_records: List[dict] = []
         if assistant_response.info.get("tool_calls"):
             for tool_call in assistant_response.info["tool_calls"]:
                 tool_call_records.append(tool_call.as_dict())
 
+        # 当前轮次对话历史
         _data = {
             "user": user_response.msg.content
             if hasattr(user_response, "msg") and user_response.msg
@@ -476,6 +506,7 @@ def run_society(
             "tool_calls": tool_call_records,
         }
 
+        # 更新对话历史
         chat_history.append(_data)
         logger.info(
             f"Round #{_round} user_response:\n {user_response.msgs[0].content if user_response.msgs and len(user_response.msgs) > 0 else ''}"
@@ -484,6 +515,7 @@ def run_society(
             f"Round #{_round} assistant_response:\n {assistant_response.msgs[0].content if assistant_response.msgs and len(assistant_response.msgs) > 0 else ''}"
         )
 
+        # 检查其他终止条件
         if (
             assistant_response.terminated
             or user_response.terminated
@@ -493,7 +525,9 @@ def run_society(
 
         input_msg = assistant_response.msg
 
+    # 返回最终答案
     answer = chat_history[-1]["assistant"]
+    # 返回token信息
     token_info = {
         "completion_token_count": overall_completion_token_count,
         "prompt_token_count": overall_prompt_token_count,
