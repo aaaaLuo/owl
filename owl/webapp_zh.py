@@ -55,7 +55,7 @@ def setup_logging():
 
     # 创建控制台处理器
     console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
+    console_handler.setLevel(logging.DEBUG)
 
     # 创建格式化器
     formatter = logging.Formatter(
@@ -252,6 +252,7 @@ MODULE_DESCRIPTIONS = {
     "run_qwen_zh": "使用qwen模型处理任务",
     "run_azure_openai": "使用azure openai模型处理任务",
     "run_groq": "使用groq模型处理任务",
+    "run_browser": "使用预置浏览器处理搜索任务",
     "run_ppio": "使用ppio模型处理任务",
 }
 
@@ -612,8 +613,6 @@ def get_api_guide(key: str) -> str:
         return "https://help.aliyun.com/zh/model-studio/developer-reference/get-api-key"
     elif "deepseek" in key_lower:
         return "https://platform.deepseek.com/api_keys"
-    elif "ppio" in key_lower:
-        return "https://ppinfra.com/settings/key-management?utm_source=github_owl"
     elif "google" in key_lower:
         return "https://coda.io/@jon-dallas/google-image-search-pack-example/search-engine-id-and-google-api-key-3"
     elif "search_engine_id" in key_lower:
@@ -1063,21 +1062,21 @@ def create_ui():
                     label="问题",
                     elem_id="question_input",
                     show_copy_button=True,
-                    value="打开百度搜索，总结一下camel-ai的camel框架的github star、fork数目等，并把数字用plot包写成python文件保存到本地，并运行生成的python文件。",
+                    value="利用浏览器工具，访问网站 https://weixin.sogou.com/ ，并在搜索框中输入`Agent`，返回第一个搜索结果的标题和链接",
                 )
 
                 # 增强版模块选择下拉菜单
                 # 只包含MODULE_DESCRIPTIONS中定义的模块
                 module_dropdown = gr.Dropdown(
                     choices=list(MODULE_DESCRIPTIONS.keys()),
-                    value="run_qwen_zh",
+                    value="run_browser",
                     label="选择功能模块",
                     interactive=True,
                 )
 
                 # 模块描述文本框
                 module_description = gr.Textbox(
-                    value=MODULE_DESCRIPTIONS["run_qwen_zh"],
+                    value=MODULE_DESCRIPTIONS["run_browser"],
                     label="模块描述",
                     interactive=False,
                     elem_classes="module-info",
@@ -1098,7 +1097,7 @@ def create_ui():
 
                 # 示例问题
                 examples = [
-                    "打开百度搜索，总结一下camel-ai的camel框架的github star、fork数目等，并把数字用plot包写成python文件保存到本地，并运行生成的python文件。",
+                    "利用浏览器工具，访问网站 https://weixin.sogou.com/ ，并在搜索框中输入`Agent`，返回第一个搜索结果的标题和链接",
                     "浏览亚马逊并找出一款对程序员有吸引力的产品。请提供产品名称和价格",
                     "写一个hello world的python文件，保存到本地",
                 ]
@@ -1269,6 +1268,7 @@ def main():
 
         app.queue()
         app.launch(share=False)
+        # app.launch(server_name="0.0.0.0", server_port=7860)
     except Exception as e:
         logging.error(f"启动应用程序时发生错误: {str(e)}")
         print(f"启动应用程序时发生错误: {str(e)}")
