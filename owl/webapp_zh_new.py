@@ -1093,8 +1093,8 @@ def create_ui():
                 # 示例问题
                 examples = [
                     "利用浏览器工具，访问网站 https://weixin.sogou.com/ ，并在搜索框中输入`Agent`，返回第一个搜索结果的标题和链接",
-                    "浏览亚马逊并找出一款对程序员有吸引力的产品。请提供产品名称和价格",
-                    "写一个hello world的python文件，保存到本地",
+                    "通过百度搜索一下, 最新的科技产品",
+                    "中国移动",
                 ]
 
                 gr.Examples(examples=examples, inputs=question_input)
