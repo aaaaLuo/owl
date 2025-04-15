@@ -12,27 +12,19 @@
 # limitations under the License.
 # ========= Copyright 2023-2024 @ CAMEL-AI.org. All Rights Reserved. =========
 import os
+import pathlib
 import sys
 
-from dotenv import load_dotenv
 from camel.agents import ChatAgent
-from camel.models import ModelFactory
+from camel.logger import set_log_level
 from camel.messages import BaseMessage
+from camel.models import ModelFactory
 from camel.toolkits import (
     FunctionTool,
-    ExcelToolkit,
-    ImageAnalysisToolkit,
     SearchToolkit,
-    BrowserToolkit,
-    FileWriteToolkit,
 )
 from camel.types import ModelPlatformType
-
-from owl.utils import run_society, DocumentProcessingToolkit
-from camel.societies import RolePlaying
-from camel.logger import set_log_level
-
-import pathlib
+from dotenv import load_dotenv
 
 base_dir = pathlib.Path(__file__).parent.parent
 env_path = base_dir / "owl" / ".env"

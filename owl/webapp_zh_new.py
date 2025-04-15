@@ -249,6 +249,7 @@ MODULE_DESCRIPTIONS = {
     "run_deepseek_zh": "使用deepseek模型处理中文任务",
     "run_browser": "使用预置浏览器处理搜索任务",
     "run_baidu_search": "使用百度处理搜索任务",
+    "run_company_api": "使用企业数据API处理搜索任务(获取企业信息、财务指标、微信文章)",
 }
 
 
@@ -358,9 +359,9 @@ def run_owl(question: str, example_module: str) -> Tuple[str, str, str]:
             logging.error(f"模块 {module_path} 中未找到 construct_society 函数")
             response = module.main(question)
             answer = response.msgs[0].content
-            chat_history = None
             logging.info(f"assistant_response: {response.msgs[0].content if response.msgs and len(response.msgs) > 0 else ''}")
             token_info = None
+            chat_history = None
         else:
             # 构建社会模拟
             try:
